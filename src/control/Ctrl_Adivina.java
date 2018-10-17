@@ -1,9 +1,11 @@
 package control;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Vector;
 
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletContext;
@@ -22,10 +24,9 @@ import modelo.Intento;
 @WebServlet("/logica")
 public class Ctrl_Adivina extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-	private int contador = 0;
-	private LocalDateTime tiempoInicial;
-	private LocalDateTime tiempoFinal;
-	private Integer tiempoTotal = null;
+	//private LocalDateTime tiempoInicial;
+	//private LocalDateTime tiempoFinal;
+	//private Integer tiempoTotal = null;
 
 	/**
 	 * 
@@ -48,6 +49,12 @@ public class Ctrl_Adivina extends HttpServlet {
 
 	}
 
+	
+
+	
+
+	
+
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
 	 *      response)
@@ -55,51 +62,59 @@ public class Ctrl_Adivina extends HttpServlet {
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		HttpSession session = request.getSession(true);
-		String jugar = request.getParameter("jugar");
-		if (jugar != null) {
-			switch (jugar) {
-			case "¡JUGAR!":
-				validarIntervalo(request, response);
-				if (validarIntervalo(request, response) == true) {
-					if (session.getAttribute("listaIntentos") != null) {
-						contador =  0;
-						session.setAttribute("listaIntentos", new ArrayList<Intento>());
-						session.setAttribute("numero", null);
+		botones(request,response);
+	}
+	
+
+	
+	// Mensajes de error
+		protected void botones(HttpServletRequest request, HttpServletResponse response)
+				throws ServletException, IOException {
+			HttpSession session = request.getSession(true);
+			String jugar = request.getParameter("jugar");
+			if (jugar != null) {
+				switch (jugar) {
+				case "¡JUGAR!":
+					validarIntervalo(request, response);
+					if (validarIntervalo(request, response) == true) {
+						if (session.getAttribute("listaIntentos") != null) {
+							session.setAttribute("listaIntentos", new ArrayList<Intento>());
+							session.setAttribute("numero", null);
+						}
+						Integer num1 = (Integer) session.getAttribute("min");
+						Integer num2 = (Integer) session.getAttribute("max");
+						Random r = new Random();
+						int numeroAleatorio = num1 + r.nextInt(num2 - num1 + 1);
+						session.setAttribute("aleatorio", numeroAleatorio);
+						ServletContext sc = getServletContext();
+						RequestDispatcher rd = sc.getRequestDispatcher("/jugar.jsp");
+						rd.forward(request, response);
+					} else {
+						ServletContext sc = getServletContext();
+						RequestDispatcher rd = sc.getRequestDispatcher("/index.jsp");
+						rd.forward(request, response);
 					}
-					Integer num1 = (Integer) session.getAttribute("min");
-					Integer num2 = (Integer) session.getAttribute("max");
-					Random r = new Random();
-					int numeroAleatorio = num1 + r.nextInt(num2 - num1 + 1);
-					session.setAttribute("aleatorio", numeroAleatorio);
+					break;
+				case "¡PROBAR SUERTE!":
+					System.out.println(session.getAttribute("aleatorio"));
+					calculando(request, response, (Integer) session.getAttribute("aleatorio"));
+
 					ServletContext sc = getServletContext();
 					RequestDispatcher rd = sc.getRequestDispatcher("/jugar.jsp");
 					rd.forward(request, response);
-				} else {
-					ServletContext sc = getServletContext();
-					RequestDispatcher rd = sc.getRequestDispatcher("/index.jsp");
+					break;
+				case "REGRESAR":
+					session.invalidate();
+					sc = getServletContext();
+					rd = sc.getRequestDispatcher("/index.jsp");
 					rd.forward(request, response);
+					break;
 				}
-				break;
-			case "¡PROBAR SUERTE!":
-				System.out.println(session.getAttribute("aleatorio"));
-				calculando(request, response, (Integer) session.getAttribute("aleatorio"));
-				ServletContext sc = getServletContext();
-				RequestDispatcher rd = sc.getRequestDispatcher("/jugar.jsp");
-				rd.forward(request, response);
-				break;
-			case "REGRESAR":
-				contador = 0;
-				tiempoTotal = null;
-				session.invalidate();
-				sc = getServletContext();
-				rd = sc.getRequestDispatcher("/index.jsp");
-				rd.forward(request, response);
-				break;
 			}
+			
 		}
-		
-	}
+
+	
 	
 	protected boolean validarIntervalo(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -169,15 +184,16 @@ public class Ctrl_Adivina extends HttpServlet {
 			}
 			if (session.getAttribute("numero") != null) {
 				Intento intento = new Intento();
-				intento.setOrden(++contador);
+				Integer contador =  (Integer)session.getAttribute("contador");
+				if (contador == null) {
+					contador  = 1;
+					session.setAttribute("contador", contador);
+				}
+				intento.setOrden(contador);
 				if (contador == 1) {
-					tiempoInicial = LocalDateTime.now();
+					session.setAttribute("tiempoInicial",LocalDateTime.now());
 				}
-				if (contador >= 1) {
-					tiempoFinal = LocalDateTime.now();
-					tiempoTotal = calcularTiempo(tiempoInicial, tiempoFinal);
-
-				}
+				session.setAttribute("contador", ++contador);
 				intento.setFechaHora(LocalDateTime.now());
 				intento.setNumeroJugado((Integer) session.getAttribute("numero"));
 				if (numeroAleatorio < ((Integer) session.getAttribute("numero")))
@@ -186,6 +202,10 @@ public class Ctrl_Adivina extends HttpServlet {
 					intento.setMensaje("El número es más grande");
 				else {
 					intento.setMensaje("¡Has acertado!");
+					session.setAttribute("tiempoFinal",LocalDateTime.now());
+					LocalDateTime tiempoInicial = (LocalDateTime)session.getAttribute("tiempoInicial");
+					LocalDateTime tiempoFinal = (LocalDateTime)session.getAttribute("tiempoFinal");
+					int tiempoTotal = calcularTiempo(tiempoInicial, tiempoFinal);
 					session.setAttribute("tiempoTotal", tiempoTotal);
 				}
 
